@@ -21,12 +21,11 @@
 # The sshtest.sh scipt and the input-file need to be in the same folder.
 # The output-file will be stored in the same folder.
 
+set -eu
+
 # Ask user for filename with hosts and ports to scan
 echo "Please enter the filename with hosts to scan:"
 read -r hosts
-
-#echo $hosts
-#cat $hosts
 
 # Date and time setting to append to output filename
 dati=$(date '+%Y%m%d_%H%M%S')
@@ -35,18 +34,20 @@ dati=$(date '+%Y%m%d_%H%M%S')
 outputfile=${hosts%%.*}"_sshtest_$dati.csv"
 
 # Perform a scan to each host and port from delivered file and create output csv file
+# sed removes carriage return if inside file before performing the scans
+sed -r -e 's/\r//g' "$hosts" |
 while read -r -d';' host && read -r port; do
     tempfile=$(mktemp)
     # Write scanned host and port into tempfile
     echo "Host: ""$host","$port" >> "$tempfile"
     # Perfomr ssh scan and write output into tempfile
-    ssh -vv -o BatchMode=yes -p "$port" "$host" >> "$tempfile" 2>&1
+    ssh -vv -o BatchMode=yes -p "$port" "$host" >> "$tempfile" 2>&1 || true
     # Copy only lines into outputfile beginning with Host: and debug1:
     grep -E -e "^Host:" -e "^debug1: Remote protocol" "$tempfile" >> "$outputfile"
     # Copy line beginning with "debug2: peer server" plus the following 6 lines into outputfile
     grep -E -A 6 "^debug2: peer server" "$tempfile" >> "$outputfile"
     rm "$tempfile"
-done < "$hosts"
+done
 
 # Remove unnecessary information
 # First expression > Remove line "peer server KEXINIT"

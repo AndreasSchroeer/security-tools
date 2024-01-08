@@ -23,6 +23,8 @@
 # The tlstest.sh scipt and the input-file need to be in the same folder.
 # The output-file will be stored in the same folder.
 
+set -eu
+
 # Ask user for filename with hosts and ports to scan
 echo "Please enter the filename with hosts to scan:"
 read -r hosts
@@ -34,9 +36,11 @@ dati=$(date '+%Y%m%d_%H%M%S')
 outputfile=${hosts%%.*}"_tlstest_$dati.csv"
 
 # Perform a scan to each host and port from delivered file and create output csv file
+# sed removes carriage return if inside file before performing the scans
+sed -r -e 's/\r//g' "$hosts" |
 while read -r -d';' host && read -r port; do
 	/opt/testssl.sh/testssl.sh --quiet -E -S --mapping no-openssl --csvfile "$outputfile" --append "$host":"$port"
-done < "$hosts"
+done
 
 # Remove unnecessary information
 # First expression > Change / into a separator to separate FQDN and IP-Address
